@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema({
     email: {
-        type: String;
+        type: String,
         required: true
     },
 
@@ -11,7 +11,9 @@ const userSchema = new mongoose.Schema({
         required: true
     },
 
-    timestamp: true
+   timestamp: { 
+        type: Date, 
+        default: Date.now }
 });
 
 export default mongoose.model("User", userSchema);

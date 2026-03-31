@@ -1,20 +1,28 @@
+
+
+// backend/models/Project.js
 import mongoose from "mongoose";
 
-const projectSchema = new mongoose.Schema({
+const projectSchema = new mongoose.Schema(
+  {
     name: {
-        type: String,
-        required: true
+      type: String,
+      required: true,
     },
-
     description: {
-        type: String
+      type: String,
     },
-
     owner: {
-        type: mongoose.Schema.Types.ObjectId, ref: "user"}
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
     },
-
-     timestamps: true 
-});
+  },
+  {
+    timestamp: { 
+        type: Date, 
+        default: Date.now }
+  }
+);
 
 export default mongoose.model("Project", projectSchema);

@@ -1,8 +1,20 @@
 import { useContext } from "react";
 import { AuthContext } from "./context/Auth";
+import { request } from "./utils/api";
 
 function App() {
   const { user, login, logout } = useContext(AuthContext);
+
+      //  test API function
+  const testAPI = async () => {
+    try {
+      const data = await request("/test");
+      console.log("API response:", data);
+    } catch (err) {
+      console.log("API error:", err.message);
+    }
+  };
+
 
   return (
     <div>
@@ -20,6 +32,11 @@ function App() {
           Fake Login
         </button>
       )}
+
+        <hr />
+
+       {/* API TEST */} 
+      <button onClick={testAPI}>Test API</button>
     </div>
   );
 }

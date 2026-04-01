@@ -1,14 +1,14 @@
 import User from "../models/User.js";
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 const secret = process.env.JWT_SECRET;
 const expiration = "24h";
 
-// register
+// Register a new user
 export const registerUser = async (req, res) => {
   try {
     const saltRounds = 10;
-
     const hashedPassword = await bcrypt.hash(req.body.password, saltRounds);
 
     const user = await User.create({
@@ -21,7 +21,6 @@ export const registerUser = async (req, res) => {
       email: user.email,
       _id: user._id,
     };
-
     const token = jwt.sign({ data: payload }, secret, {
       expiresIn: expiration,
     });
@@ -33,30 +32,25 @@ export const registerUser = async (req, res) => {
   }
 };
 
-// login
+// Login an existing user
 export const loginUser = async (req, res) => {
   try {
     const user = await User.findOne({ email: req.body.email });
-
-    if (!user) {
+    if (!user)
       return res.status(400).json({ message: "Incorrect email or password" });
-    }
 
     const correctPassword = await bcrypt.compare(
       req.body.password,
       user.password,
     );
-
-    if (!correctPassword) {
+    if (!correctPassword)
       return res.status(400).json({ message: "Incorrect email or password" });
-    }
 
     const payload = {
       username: user.username,
       email: user.email,
       _id: user._id,
     };
-
     const token = jwt.sign({ data: payload }, secret, {
       expiresIn: expiration,
     });
@@ -64,15 +58,6 @@ export const loginUser = async (req, res) => {
     res.status(200).json({ token, user });
   } catch (err) {
     console.log(err.message);
-    res.status(400).json({ message: err.message });
-  }
-};
-
-// get current user
-export const getMe = async (req, res) => {
-  try {
-    res.status(200).json(req.user);
-  } catch (err) {
     res.status(400).json({ message: err.message });
   }
 };

@@ -1,6 +1,3 @@
-
-
-// backend/models/Project.js
 import mongoose from "mongoose";
 
 const projectSchema = new mongoose.Schema(
@@ -9,20 +6,15 @@ const projectSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    description: {
-      type: String,
-    },
+
+    description: String,
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
   },
-  {
-    timestamp: { 
-        type: Date, 
-        default: Date.now }
-  }
+  { timestamps: true },
 );
 
 export default mongoose.model("Project", projectSchema);

@@ -1,8 +1,14 @@
+import express from "express";
 import Task from "../models/Task.js";
 import Project from "../models/Project.js";
+import { authMiddleware } from "../middleware/auth.js";
+
+const router = express.Router({ mergeParams: true });
+
+router.use(authMiddleware);
 
 // CREATE TASK
-export const createTask = async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const { projectId } = req.params;
 
@@ -12,7 +18,9 @@ export const createTask = async (req, res) => {
     });
 
     if (!project) {
-      return res.status(403).json({ message: "Not authorized" });
+      return res
+        .status(403)
+        .json({ message: "Not authorized for this project" });
     }
 
     const task = await Task.create({
@@ -23,12 +31,13 @@ export const createTask = async (req, res) => {
 
     res.status(201).json(task);
   } catch (err) {
+    console.log(err.message);
     res.status(400).json({ message: err.message });
   }
-};
+});
 
 // GET TASKS
-export const getTasks = async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const { projectId } = req.params;
 
@@ -48,17 +57,20 @@ export const getTasks = async (req, res) => {
 
     res.status(200).json(tasks);
   } catch (err) {
+    console.log(err.message);
     res.status(400).json({ message: err.message });
   }
-};
+});
 
 // UPDATE TASK
-export const updateTask = async (req, res) => {
+router.put("/:taskId", async (req, res) => {
   try {
+    const { projectId, taskId } = req.params;
+
     const task = await Task.findOneAndUpdate(
       {
-        _id: req.params.taskId,
-        project: req.params.projectId,
+        _id: taskId,
+        project: projectId,
         owner: req.user._id,
       },
       req.body,
@@ -66,30 +78,40 @@ export const updateTask = async (req, res) => {
     );
 
     if (!task) {
-      return res.status(404).json({ message: "Not authorized" });
+      return res
+        .status(404)
+        .json({ message: "Task not found or not authorized" });
     }
 
     res.status(200).json(task);
   } catch (err) {
+    console.log(err.message);
     res.status(400).json({ message: err.message });
   }
-};
+});
 
 // DELETE TASK
-export const deleteTask = async (req, res) => {
+router.delete("/:taskId", async (req, res) => {
   try {
+    const { projectId, taskId } = req.params;
+
     const task = await Task.findOneAndDelete({
-      _id: req.params.taskId,
-      project: req.params.projectId,
+      _id: taskId,
+      project: projectId,
       owner: req.user._id,
     });
 
     if (!task) {
-      return res.status(404).json({ message: "Not authorized" });
+      return res
+        .status(404)
+        .json({ message: "Task not found or not authorized" });
     }
 
     res.status(200).json({ message: "Task deleted successfully" });
   } catch (err) {
+    console.log(err.message);
     res.status(400).json({ message: err.message });
   }
-};
+});
+
+export default router;

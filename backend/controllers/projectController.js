@@ -1,6 +1,7 @@
 import Project from "../models/Project.js";
+import Task from "../models/Task.js";
 
-// Get all projects owned by logged-in user
+// GET ALL PROJECTS
 export const getProjects = async (req, res) => {
   try {
     const projects = await Project.find({ owner: req.user._id })
@@ -14,15 +15,12 @@ export const getProjects = async (req, res) => {
   }
 };
 
-// Create a new project
+// CREATE PROJECT
 export const createProject = async (req, res) => {
   try {
-    const { name, description } = req.body;
-
     const project = await Project.create({
-      name,
-      description,
-      owner: req.user._id, // assign logged-in user as owner
+      ...req.body,
+      owner: req.user._id,
     });
 
     res.status(201).json(project);
@@ -32,7 +30,7 @@ export const createProject = async (req, res) => {
   }
 };
 
-// Get a single project by ID (only if user is owner)
+// GET SINGLE PROJECT
 export const getProjectById = async (req, res) => {
   try {
     const project = await Project.findOne({
@@ -51,17 +49,17 @@ export const getProjectById = async (req, res) => {
   }
 };
 
-// Update a project (only owner can update)
+// UPDATE PROJECT
 export const updateProject = async (req, res) => {
   try {
     const project = await Project.findOneAndUpdate(
       { _id: req.params.projectId, owner: req.user._id },
       req.body,
-      { new: true }
+      { new: true },
     );
 
     if (!project) {
-      return res.status(404).json({ message: "Project not found or not authorized" });
+      return res.status(404).json({ message: "Not authorized" });
     }
 
     res.status(200).json(project);
@@ -71,19 +69,24 @@ export const updateProject = async (req, res) => {
   }
 };
 
-// Delete a project (only owner can delete)
+// DELETE PROJECT
 export const deleteProject = async (req, res) => {
   try {
-    const project = await Project.findOneAndDelete({
+    const project = await Project.findOne({
       _id: req.params.projectId,
       owner: req.user._id,
     });
 
     if (!project) {
-      return res.status(404).json({ message: "Project not found or not authorized" });
+      return res.status(404).json({ message: "Not authorized" });
     }
 
-    res.status(200).json({ message: "Project deleted" });
+    // delete related tasks
+    await Task.deleteMany({ project: req.params.projectId });
+
+    await Project.findByIdAndDelete(req.params.projectId);
+
+    res.status(200).json({ message: "Project deleted successfully" });
   } catch (err) {
     console.log(err.message);
     res.status(400).json({ message: err.message });

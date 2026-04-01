@@ -25,10 +25,19 @@ router.post("/register", async (req, res) => {
       _id: user._id,
     };
 
-    const token = jwt.sign({ data: payload }, secret, { expiresIn: expiration });
+    const token = jwt.sign({ data: payload }, secret, {
+      expiresIn: expiration,
+    });
+
     res.status(201).json({ token, user: payload });
   } catch (err) {
     console.log(err.message);
+
+    // handle duplicate email
+    if (err.code === 11000) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
     res.status(400).json({ message: err.message });
   }
 });
@@ -37,10 +46,16 @@ router.post("/register", async (req, res) => {
 router.post("/login", async (req, res) => {
   try {
     const user = await User.findOne({ email: req.body.email });
-    if (!user) return res.status(400).json({ message: "Incorrect email or password" });
+
+    if (!user) {
+      return res.status(401).json({ message: "Incorrect email or password" });
+    }
 
     const valid = await bcrypt.compare(req.body.password, user.password);
-    if (!valid) return res.status(400).json({ message: "Incorrect email or password" });
+
+    if (!valid) {
+      return res.status(401).json({ message: "Incorrect email or password" });
+    }
 
     const payload = {
       username: user.username,
@@ -48,7 +63,10 @@ router.post("/login", async (req, res) => {
       _id: user._id,
     };
 
-    const token = jwt.sign({ data: payload }, secret, { expiresIn: expiration });
+    const token = jwt.sign({ data: payload }, secret, {
+      expiresIn: expiration,
+    });
+
     res.status(200).json({ token, user: payload });
   } catch (err) {
     console.log(err.message);
@@ -56,8 +74,9 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// GET current logged-in user
+// GET current user
 router.use(authMiddleware);
+
 router.get("/", (req, res) => {
   res.status(200).json(req.user);
 });

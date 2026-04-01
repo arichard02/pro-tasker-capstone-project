@@ -6,14 +6,13 @@ import taskRoutes from "./taskRoutes.js";
 
 const router = express.Router();
 
+// Protect all routes
 router.use(authMiddleware);
 
-// mount task routes
+// Nested task routes
 router.use("/:projectId/tasks", taskRoutes);
 
-//
 // PROJECT ROUTES
-//
 
 // CREATE PROJECT
 router.post("/", async (req, res) => {
@@ -32,7 +31,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// GET ALL PROJECTS
+// GET ALL PROJECTS (for logged-in user only)
 router.get("/", async (req, res) => {
   try {
     const projects = await Project.find({ owner: req.user._id })
@@ -52,7 +51,7 @@ router.get("/:id", async (req, res) => {
     const project = await Project.findOne({
       _id: req.params.id,
       owner: req.user._id,
-    });
+    }).populate("owner", "username");
 
     if (!project) {
       return res.status(404).json({ message: "Project not found" });
@@ -72,10 +71,10 @@ router.put("/:id", async (req, res) => {
       { _id: req.params.id, owner: req.user._id },
       req.body,
       { new: true },
-    );
+    ).populate("owner", "username");
 
     if (!project) {
-      return res.status(404).json({ message: "Not authorized" });
+      return res.status(404).json({ message: "Not authorized or not found" });
     }
 
     res.status(200).json(project);
@@ -88,19 +87,16 @@ router.put("/:id", async (req, res) => {
 // DELETE PROJECT
 router.delete("/:id", async (req, res) => {
   try {
-    const project = await Project.findById(req.params.id);
+    const project = await Project.findOne({
+      _id: req.params.id,
+      owner: req.user._id,
+    });
 
     if (!project) {
-      return res.status(404).json({ message: "Project not found" });
+      return res.status(404).json({ message: "Not authorized or not found" });
     }
 
-    if (project.owner.toString() !== req.user._id) {
-      return res
-        .status(403)
-        .json({ message: "User does not own this project" });
-    }
-
-    // delete all tasks tied to this project
+    // Delete all tasks related to this project
     await Task.deleteMany({ project: req.params.id });
 
     await Project.findByIdAndDelete(req.params.id);

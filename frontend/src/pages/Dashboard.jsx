@@ -14,6 +14,7 @@ export default function Dashboard() {
 
     const fetchProjects = async () => {
       setLoading(true);
+      setError("");
       try {
         const data = await request("/projects", "GET", null, user.token);
         setProjects(data);
@@ -34,8 +35,9 @@ export default function Dashboard() {
       <h2>Your Projects</h2>
       {loading && <p>Loading...</p>}
       {error && <p style={{ color: "red" }}>{error}</p>}
+
       <div className="projects-grid">
-        {projects.length === 0 && <p>No projects yet!</p>}
+        {projects.length === 0 && !loading && <p>No projects yet!</p>}
         {projects.map((project) => (
           <ProjectCard key={project._id} project={project} />
         ))}

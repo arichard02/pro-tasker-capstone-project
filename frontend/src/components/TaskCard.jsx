@@ -25,7 +25,7 @@ export default function TaskCard({
       onUpdate(updatedTask);
     } catch (err) {
       console.error(err);
-      setStatus(task.status); // rollback if error
+      setStatus(task.status); 
     } finally {
       setLoading(false);
     }

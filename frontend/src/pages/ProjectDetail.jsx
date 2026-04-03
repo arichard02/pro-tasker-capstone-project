@@ -1,130 +1,79 @@
 import { useState, useEffect, useContext } from "react";
 import { useParams } from "react-router-dom";
-import { AuthContext } from "../context/Auth";
-import { request } from "../utils/api";
+import { request } from "../utils/api.js";
+import { AuthContext } from "../context/Auth.jsx";
 
 export default function ProjectDetail() {
-  const { projectId } = useParams();
   const { user } = useContext(AuthContext);
-
-  const [project, setProject] = useState(null);
+  const { projectId } = useParams();
   const [tasks, setTasks] = useState([]);
-  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
 
-  // Fetch project + tasks
-  const fetchData = async () => {
+  const fetchTasks = async () => {
     try {
-      const project = await request(
-        `/projects/${projectId}`,
-        "GET",
-        null,
-        user.token,
-      );
-      setProject(project);
-
-      const taskData = await request(
+      const data = await request(
         `/projects/${projectId}/tasks`,
         "GET",
         null,
         user.token,
       );
-      setTasks(taskData);
+      setTasks(data);
     } catch (err) {
-      console.error("Fetch error:", err);
+      console.error("Error fetching tasks:", err);
     }
   };
 
   useEffect(() => {
-    if (user) fetchData();
+    if (user) fetchTasks();
   }, [user]);
 
-  // CREATE TASK
   const handleCreateTask = async () => {
-    if (!newTaskTitle.trim()) return;
-
+    if (!title || !description)
+      return alert("Title and Description are required");
     try {
-      const newTask = await request(
+      const data = await request(
         `/projects/${projectId}/tasks`,
         "POST",
-        { title: newTaskTitle },
+        { title, description },
         user.token,
       );
-
-      setTasks([newTask, ...tasks]);
-      setNewTaskTitle("");
+      setTasks([...tasks, data]);
+      setTitle("");
+      setDescription("");
     } catch (err) {
       console.error("Error creating task:", err);
     }
   };
 
-  // UPDATE TASK
-  const handleUpdateTask = async (taskId, status) => {
-    try {
-      const updated = await request(
-        `/projects/${projectId}/tasks/${taskId}`,
-        "PUT",
-        { status },
-        user.token,
-      );
-
-      setTasks(tasks.map((task) => (task._id === taskId ? updated : task)));
-    } catch (err) {
-      console.error("Error updating task:", err);
-    }
-  };
-
-  // DELETE TASK
-  const handleDeleteTask = async (taskId) => {
-    try {
-      await request(
-        `/projects/${projectId}/tasks/${taskId}`,
-        "DELETE",
-        null,
-        user.token,
-      );
-
-      setTasks(tasks.filter((task) => task._id !== taskId));
-    } catch (err) {
-      console.error("Error deleting task:", err);
-    }
-  };
-
-  if (!project) return <p>Loading...</p>;
-
   return (
     <div>
-      <h2>{project.name}</h2>
-
+      <h2>Project Tasks</h2>
       <div>
         <input
-          type="text"
-          placeholder="New Task"
-          value={newTaskTitle}
-          onChange={(e) => setNewTaskTitle(e.target.value)}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Title"
+        />
+        <input
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Description"
         />
         <button onClick={handleCreateTask}>Add Task</button>
       </div>
-
-      <h3>Tasks</h3>
-
-      {tasks.length === 0 && <p>No tasks yet</p>}
-
-      <ul>
+      <div>
         {tasks.map((task) => (
-          <li key={task._id}>
-            {task.title} - {task.status}
-            <select
-              value={task.status}
-              onChange={(e) => handleUpdateTask(task._id, e.target.value)}
-            >
-              <option>To Do</option>
-              <option>In Progress</option>
-              <option>Done</option>
-            </select>
-            <button onClick={() => handleDeleteTask(task._id)}>Delete</button>
-          </li>
+          <div
+            key={task._id}
+            style={{ border: "1px solid #ccc", padding: "10px", margin: "5px" }}
+          >
+            <h4>{task.title}</h4>
+            <p>{task.description}</p>
+            <p>Status: {task.status}</p>
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }

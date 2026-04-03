@@ -1,35 +1,30 @@
-import { useContext, useState } from "react";
+import { useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import { AuthContext } from "../context/Auth";
-import Form from "../components/Form";
+import { AuthContext } from "../context/Auth.jsx";
+import Form from "../components/Form.jsx";
 
 export default function Login() {
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [error, setError] = useState("");
 
   const handleLogin = async (formData) => {
     try {
-      await login(formData);
+     const user = await login(formData);
+      // Navigate to dashboard after successful login
       navigate("/dashboard");
     } catch (err) {
-      setError(err.message);
+      alert(err.message || "Login failed. Please try again.");
     }
   };
 
   return (
-    <div>
-      <h2>Login</h2>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-
-      <Form
-        fields={[
-          { name: "email", type: "email", required: true },
-          { name: "password", type: "password", required: true },
-        ]}
-        onSubmit={handleLogin}
-        buttonText="Login"
-      />
-    </div>
+    <Form
+      fields={[
+        { name: "email", type: "email", required: true },
+        { name: "password", type: "password", required: true },
+      ]}
+      onSubmit={handleLogin}
+      buttonText="Login"
+    />
   );
 }

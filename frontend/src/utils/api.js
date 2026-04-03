@@ -1,6 +1,11 @@
 export const API_BASE = "http://localhost:3000/api";
 
-export async function request(endpoint, method = "GET", body = null, token = null) {
+export async function request(
+  endpoint,
+  method = "GET",
+  body = null,
+  token = null,
+) {
   const headers = {
     "Content-Type": "application/json",
   };
@@ -16,7 +21,6 @@ export async function request(endpoint, method = "GET", body = null, token = nul
   });
 
   let data;
-
   try {
     data = await res.json();
   } catch (err) {

@@ -1,33 +1,53 @@
 import jwt from "jsonwebtoken";
-import User from "../models/user.js";
+import User from "../models/User.js";
+import Project from "../models/Project.js";
+import Task from "../models/Task.js";
 
-export const protect = async (req, res, next) => {
-  let token;
+// Authenticate user using JWT
+export const requireAuth = async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ error: "Unauthorized" });
 
-  // Check for Bearer token in headers
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer ")
-  ) {
-    try {
-      token = req.headers.authorization.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select("-password");
+    if (!user) return res.status(401).json({ error: "Unauthorized" });
 
-      // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = await User.findById(decoded.id).select("-password");
-        
-      if (!req.user) {
-        return res.status(401).json({ message: "User not found" });
-      }
-
-      next();
-    } catch (err) {
-      console.error(err);
-      return res.status(401).json({ message: "Not authorized, token failed" });
-    }
+    req.user = user;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: "Invalid token" });
   }
+};
 
-  if (!token) {
-    return res.status(401).json({ message: "Not authorized, no token" });
+// Verify ownership of a project
+export const requireProjectOwnership = async (req, res, next) => {
+  try {
+    const project = await Project.findById(req.params.projectId); // Use correct param name
+    if (!project) return res.status(404).json({ error: "Project not found" });
+    if (project.owner.toString() !== req.user._id.toString())
+      return res.status(403).json({ error: "Forbidden" });
+    req.project = project;
+    next();
+  } catch (err) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+};
+
+// Verify ownership of a task
+export const requireTaskOwnership = async (req, res, next) => {
+  try {
+    const task = await Task.findById(req.params.taskId);
+    if (!task) return res.status(404).json({ error: "Task not found" });
+
+    // Check that the task belongs to a project the user owns
+    const project = await Project.findById(task.project);
+    if (!project || project.owner.toString() !== req.user._id.toString())
+      return res.status(403).json({ error: "Forbidden" });
+
+    req.task = task;
+    next();
+  } catch (err) {
+    return res.status(400).json({ error: "Invalid request" });
   }
 };

@@ -1,4 +1,4 @@
-import User from "../models/user.js";
+import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 
 // Generate JWT token
@@ -55,7 +55,7 @@ export const login = async (req, res) => {
     }
 
     // Compare password using model method
-    const isMatch = await user.comparePassword(password);
+    const isMatch = await user.matchPassword(password);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
     }

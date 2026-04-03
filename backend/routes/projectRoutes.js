@@ -1,5 +1,4 @@
 import express from "express";
-import { protect } from "../middleware/auth.js";
 import {
   createProject,
   getProjects,
@@ -7,29 +6,31 @@ import {
   updateProject,
   deleteProject,
 } from "../controllers/projectController.js";
-import taskRoutes from "./taskRoutes.js"; 
+
+import taskRoutes from "./taskRoutes.js";
+import { requireAuth, requireProjectOwnership } from "../middleware/auth.js";
 
 const router = express.Router();
 
 // Protect all project routes
-router.use(protect);
+router.use(requireAuth);
 
-// CREATE a project
+// Create a new project
 router.post("/", createProject);
 
-// GET all projects for the logged-in user
+// Get all projects for the logged-in user
 router.get("/", getProjects);
 
-// GET a single project by ID
-router.get("/:id", getProjectById);
+// Get a single project by ID (only owner)
+router.get("/:id", requireProjectOwnership, getProjectById);
 
-// UPDATE a project by ID
-router.put("/:id", updateProject);
+// Update a project by ID (only owner)
+router.put("/:id", requireProjectOwnership, updateProject);
 
-// DELETE a project by ID
-router.delete("/:id", deleteProject);
+// Delete a project by ID (only owner)
+router.delete("/:id", requireProjectOwnership, deleteProject);
 
-// Mount task routes for a project
-router.use("/:id/tasks", taskRoutes);
+// Mount task routes under project (only owner can access)
+router.use("/:id/tasks", requireProjectOwnership, taskRoutes);
 
 export default router;

@@ -1,5 +1,4 @@
 import express from "express";
-import { protect } from "../middleware/auth.js";
 import {
   createTask,
   getTasks,
@@ -7,21 +6,23 @@ import {
   deleteTask,
 } from "../controllers/taskController.js";
 
-const router = express.Router({ mergeParams: true }); 
+import { requireAuth, requireTaskOwnership } from "../middleware/auth.js";
+
+const router = express.Router({ mergeParams: true });
 
 // Protect all task routes
-router.use(protect);
+router.use(requireAuth);
 
-// GET all tasks for a project
+// Get all tasks for a project (ownership checked in projectRoutes)
 router.get("/", getTasks);
 
-// CREATE a task for a project
+// Create a task for a project (ownership checked in projectRoutes)
 router.post("/", createTask);
 
-// UPDATE a task by ID
-router.put("/:taskId", updateTask);
+// Update a task by ID (verify task ownership)
+router.put("/:taskId", requireTaskOwnership, updateTask);
 
-// DELETE a task by ID
-router.delete("/:taskId", deleteTask);
+// Delete a task by ID (verify task ownership)
+router.delete("/:taskId", requireTaskOwnership, deleteTask);
 
 export default router;

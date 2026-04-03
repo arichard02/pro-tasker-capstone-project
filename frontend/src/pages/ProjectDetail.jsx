@@ -6,29 +6,32 @@ import { AuthContext } from "../context/Auth.jsx";
 export default function ProjectDetail() {
   const { user } = useContext(AuthContext);
   const { projectId } = useParams();
+
   const [tasks, setTasks] = useState([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
 
   const STATUSES = ["To Do", "In Progress", "Done"];
   const STATUS_COLORS = {
-    "To Do": "#f87171",       // red
+    "To Do": "#f87171", // red
     "In Progress": "#fbbf24", // yellow
-    Done: "#34d399",          // green
+    Done: "#34d399", // green
   };
 
   const formatDate = (date) => new Date(date).toLocaleString();
 
+  // Fetch tasks for this project
   const fetchTasks = async () => {
     try {
       const data = await request(
         `/projects/${projectId}/tasks`,
         "GET",
         null,
-        user.token
+        user.token,
       );
       setTasks(data);
     } catch (err) {
@@ -42,13 +45,14 @@ export default function ProjectDetail() {
 
   // Create new task
   const handleCreateTask = async () => {
-    if (!title || !description) return alert("Title and Description are required");
+    if (!title || !description)
+      return alert("Title and Description are required");
     try {
       const data = await request(
         `/projects/${projectId}/tasks`,
         "POST",
         { title, description },
-        user.token
+        user.token,
       );
       setTasks([...tasks, data]);
       setTitle("");
@@ -60,13 +64,14 @@ export default function ProjectDetail() {
 
   // Update task
   const handleUpdateTask = async (taskId) => {
-    if (!editTitle || !editDescription) return alert("Title and Description required");
+    if (!editTitle || !editDescription)
+      return alert("Title and Description required");
     try {
       const updated = await request(
         `/projects/${projectId}/tasks/${taskId}`,
         "PUT",
         { title: editTitle, description: editDescription },
-        user.token
+        user.token,
       );
       setTasks(tasks.map((t) => (t._id === taskId ? updated : t)));
       setEditingTaskId(null);
@@ -77,22 +82,28 @@ export default function ProjectDetail() {
 
   // Delete task
   const handleDeleteTask = async (taskId) => {
+    if (!window.confirm("Are you sure you want to delete this task?")) return;
     try {
-      await request(`/projects/${projectId}/tasks/${taskId}`, "DELETE", null, user.token);
+      await request(
+        `/projects/${projectId}/tasks/${taskId}`,
+        "DELETE",
+        null,
+        user.token,
+      );
       setTasks(tasks.filter((t) => t._id !== taskId));
     } catch (err) {
       console.error("Error deleting task:", err);
     }
   };
 
-  // Change status
+  // Change task status
   const handleChangeStatus = async (taskId, newStatus) => {
     try {
       const updated = await request(
         `/projects/${projectId}/tasks/${taskId}`,
         "PUT",
         { status: newStatus },
-        user.token
+        user.token,
       );
       setTasks(tasks.map((t) => (t._id === taskId ? updated : t)));
     } catch (err) {
@@ -104,22 +115,24 @@ export default function ProjectDetail() {
     <div style={{ padding: "1rem" }}>
       <h2>Project Tasks</h2>
 
+      {/* Create Task */}
       <div style={{ marginBottom: "1rem" }}>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Title"
+          placeholder="Task Title"
           style={{ marginRight: "0.5rem" }}
         />
         <input
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Description"
+          placeholder="Task Description"
           style={{ marginRight: "0.5rem" }}
         />
         <button onClick={handleCreateTask}>Add Task</button>
       </div>
 
+      {/* Tasks List */}
       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
         {tasks.map((task) => (
           <div
@@ -143,7 +156,10 @@ export default function ProjectDetail() {
                   onChange={(e) => setEditDescription(e.target.value)}
                   style={{ width: "100%", marginBottom: "0.5rem" }}
                 />
-                <button onClick={() => handleUpdateTask(task._id)} style={{ marginRight: "5px" }}>
+                <button
+                  onClick={() => handleUpdateTask(task._id)}
+                  style={{ marginRight: "5px" }}
+                >
                   Save
                 </button>
                 <button onClick={() => setEditingTaskId(null)}>Cancel</button>
@@ -161,11 +177,20 @@ export default function ProjectDetail() {
                 </p>
 
                 {/* Actions */}
-                <div style={{ marginTop: "5px", display: "flex", gap: "5px", flexWrap: "wrap" }}>
-                  {/* Status dropdown */}
+                <div
+                  style={{
+                    marginTop: "5px",
+                    display: "flex",
+                    gap: "5px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {/* Status Dropdown */}
                   <select
                     value={task.status}
-                    onChange={(e) => handleChangeStatus(task._id, e.target.value)}
+                    onChange={(e) =>
+                      handleChangeStatus(task._id, e.target.value)
+                    }
                   >
                     {STATUSES.map((s) => (
                       <option key={s} value={s}>
@@ -184,12 +209,15 @@ export default function ProjectDetail() {
                   >
                     Edit
                   </button>
-                  <button onClick={() => handleDeleteTask(task._id)}>Delete</button>
+                  <button onClick={() => handleDeleteTask(task._id)}>
+                    Delete
+                  </button>
                 </div>
               </>
             )}
           </div>
         ))}
+        {tasks.length === 0 && <p>No tasks yet. Add one above!</p>}
       </div>
     </div>
   );

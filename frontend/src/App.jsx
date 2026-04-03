@@ -38,7 +38,7 @@ function App() {
           element={user ? <Navigate to="/dashboard"  /> : <Register />}
         />
 
-        {/* Dashboard - protected */}
+        {/* Dashboard */}
         <Route
           path="/dashboard"
           element={
@@ -48,7 +48,7 @@ function App() {
           }
         />
 
-        {/* Project detail - protected */}
+        {/* Project detail */}
         <Route
           path="/projects/:projectId"
           element={
@@ -58,11 +58,11 @@ function App() {
           }
         />
 
-        {/* Fallback: redirect based on login state */}
+        {/* Fallback: redirect based on login state
         <Route
           path="*"
           element={<Navigate to={user ? "/dashboard" : "/login"} replace />}
-        />
+        /> */}
       </Routes>
     </Router>
   );

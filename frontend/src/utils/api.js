@@ -1,4 +1,6 @@
-export const API_BASE = "https://pro-tasker-backend.onrender.com/api";
+export const API_BASE = import.meta.envVITE_BASE_URL
+
+
 
 export async function request(
   endpoint,

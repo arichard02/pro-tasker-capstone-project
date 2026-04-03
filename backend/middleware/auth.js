@@ -1,38 +1,33 @@
 import jwt from "jsonwebtoken";
+import User from "../models/user.js";
 
-const secret = process.env.JWT_SECRET;
+export const protect = async (req, res, next) => {
+  let token;
 
-export async function authMiddleware(req, res, next) {
-  try {
-    let token = req.headers.authorization;
+  // Check for Bearer token in headers
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer ")
+  ) {
+    try {
+      token = req.headers.authorization.split(" ")[1];
 
-    // check token exists
-    if (!token) {
-      return res.status(403).json({ message: "No token provided" });
+      // Verify token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = await User.findById(decoded.id).select("-password");
+        
+      if (!req.user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      next();
+    } catch (err) {
+      console.error(err);
+      return res.status(401).json({ message: "Not authorized, token failed" });
     }
-
-    // check Bearer format
-    if (!token.startsWith("Bearer ")) {
-      return res.status(401).json({ message: "Invalid token format" });
-    }
-
-    // extract token
-    token = token.split(" ")[1].trim();
-
-    // ensure secret exists
-    if (!secret) {
-      throw new Error("JWT_SECRET is not defined");
-    }
-
-    // verify token
-    const { data } = jwt.verify(token, secret);
-
-    // attach user to request
-    req.user = data;
-
-    next();
-  } catch (err) {
-    console.log(err.message);
-    res.status(401).json({ message: "Invalid or expired token" });
   }
-}
+
+  if (!token) {
+    return res.status(401).json({ message: "Not authorized, no token" });
+  }
+};

@@ -1,95 +1,86 @@
-import Task from "../models/Task.js";
-import Project from "../models/Project.js";
+import Task from "../models/task.js";
+import Project from "../models/project.js";
 
-// CREATE TASK
-export const createTask = async (req, res) => {
-  try {
-    const { projectId } = req.params;
-
-    const project = await Project.findOne({
-      _id: projectId,
-      owner: req.user._id,
-    });
-
-    if (!project) {
-      return res.status(403).json({ message: "Not authorized" });
-    }
-
-    const task = await Task.create({
-      ...req.body,
-      project: projectId,
-      owner: req.user._id,
-    });
-
-    res.status(201).json(task);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-};
-
-// GET TASKS
+// GET all tasks for a project
 export const getTasks = async (req, res) => {
   try {
-    const { projectId } = req.params;
+    const { id: projectId } = req.params;
 
     const project = await Project.findOne({
       _id: projectId,
-      owner: req.user._id,
+      owner: req.user.id,
     });
+    if (!project) return res.status(404).json({ message: "Project not found" });
 
-    if (!project) {
-      return res.status(403).json({ message: "Not authorized" });
-    }
-
-    const tasks = await Task.find({
-      project: projectId,
-      owner: req.user._id,
-    }).sort({ createdAt: -1 });
-
+    const tasks = await Task.find({ project: projectId });
     res.status(200).json(tasks);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// UPDATE TASK
+// CREATE a task for a project
+export const createTask = async (req, res) => {
+  try {
+    const { id: projectId } = req.params;
+    const { title, description } = req.body;
+
+    if (!title) return res.status(400).json({ message: "Title is required" });
+
+    const project = await Project.findOne({
+      _id: projectId,
+      owner: req.user.id,
+    });
+    if (!project) return res.status(404).json({ message: "Project not found" });
+
+    const task = await Task.create({ title, description, project: projectId });
+    res.status(201).json(task);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// UPDATE a task
 export const updateTask = async (req, res) => {
   try {
-    const task = await Task.findOneAndUpdate(
-      {
-        _id: req.params.taskId,
-        project: req.params.projectId,
-        owner: req.user._id,
-      },
-      req.body,
-      { new: true },
-    );
+    const { taskId } = req.params;
+    const { title, description, status } = req.body;
 
-    if (!task) {
-      return res.status(404).json({ message: "Not authorized" });
+    const task = await Task.findById(taskId).populate("project");
+    if (!task || task.project.owner.toString() !== req.user.id) {
+      return res.status(404).json({ message: "Task not found" });
     }
 
+    if (title !== undefined) task.title = title;
+    if (description !== undefined) task.description = description;
+    if (status !== undefined) task.status = status;
+
+    await task.save();
     res.status(200).json(task);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// DELETE TASK
+// DELETE a task
 export const deleteTask = async (req, res) => {
   try {
-    const task = await Task.findOneAndDelete({
-      _id: req.params.taskId,
-      project: req.params.projectId,
-      owner: req.user._id,
-    });
+    const { taskId } = req.params;
 
-    if (!task) {
-      return res.status(404).json({ message: "Not authorized" });
+    const task = await Task.findById(taskId).populate("project");
+    if (!task || task.project.owner.toString() !== req.user.id) {
+      return res.status(404).json({ message: "Task not found" });
     }
 
+
+    await Task.findByIdAndDelete(taskId);
+    
     res.status(200).json({ message: "Task deleted successfully" });
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
   }
 };

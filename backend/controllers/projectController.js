@@ -1,94 +1,85 @@
-import Project from "../models/Project.js";
-import Task from "../models/Task.js";
+import Project from "../models/project.js";
+import Task from "../models/task.js"; 
 
-// GET ALL PROJECTS
-export const getProjects = async (req, res) => {
-  try {
-    const projects = await Project.find({ owner: req.user._id })
-      .sort({ createdAt: -1 })
-      .populate("owner", "username email");
-
-    res.status(200).json(projects);
-  } catch (err) {
-    console.log(err.message);
-    res.status(400).json({ message: err.message });
-  }
-};
-
-// CREATE PROJECT
+// CREATE project
 export const createProject = async (req, res) => {
   try {
-    const project = await Project.create({
-      ...req.body,
-      owner: req.user._id,
-    });
-
+    const project = await Project.create({ ...req.body, owner: req.user._id });
     res.status(201).json(project);
   } catch (err) {
-    console.log(err.message);
     res.status(400).json({ message: err.message });
   }
 };
 
-// GET SINGLE PROJECT
+// GET all projects for logged-in user
+export const getProjects = async (req, res) => {
+  try {
+    const projects = await Project.find({ owner: req.user._id });   
+    res.status(200).json(projects);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// GET a single project by ID
 export const getProjectById = async (req, res) => {
   try {
-    const project = await Project.findOne({
-      _id: req.params.projectId,
-      owner: req.user._id,
-    }).populate("owner", "username email");
+  const project = await Project.findById(req.params.id);
 
     if (!project) {
       return res.status(404).json({ message: "Project not found" });
     }
 
+    if (project.owner.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
     res.status(200).json(project);
   } catch (err) {
-    console.log(err.message);
-    res.status(400).json({ message: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
 
-// UPDATE PROJECT
+// UPDATE 
 export const updateProject = async (req, res) => {
   try {
-    const project = await Project.findOneAndUpdate(
-      { _id: req.params.projectId, owner: req.user._id },
-      req.body,
-      { new: true },
-    );
+    const project = await Project.findById(req.params.id);
 
     if (!project) {
-      return res.status(404).json({ message: "Not authorized" });
+      return res.status(404).json({ message: "Project not found" });
     }
 
+    if (project.owner.toString() !== req.user._id.toString())
+      return res.status(403).json({ message: "Not authorized" });
+
+    Object.assign(project, req.body);
+    await project.save();
     res.status(200).json(project);
   } catch (err) {
-    console.log(err.message);
     res.status(400).json({ message: err.message });
   }
 };
 
-// DELETE PROJECT
+
+// DELETE a project
 export const deleteProject = async (req, res) => {
   try {
-    const project = await Project.findOne({
-      _id: req.params.projectId,
-      owner: req.user._id,
-    });
+    const project = await Project.findById(req.params.id);
 
     if (!project) {
-      return res.status(404).json({ message: "Not authorized" });
+      return res.status(404).json({ message: "Project not found" });
     }
 
-    // delete related tasks
-    await Task.deleteMany({ project: req.params.projectId });
+    if (project.owner.toString() !== req.user._id.toString())
+      return res.status(403).json({ message: "Not authorized" });
 
-    await Project.findByIdAndDelete(req.params.projectId);
+    // Optionally: Delete all tasks associated with this project
+    await Task.deleteMany({ project: project._id });
+
+    await project.deleteOne();
 
     res.status(200).json({ message: "Project deleted successfully" });
   } catch (err) {
-    console.log(err.message);
-    res.status(400).json({ message: err.message });
+    res.status(500).json({ message: err.message });
   }
 };

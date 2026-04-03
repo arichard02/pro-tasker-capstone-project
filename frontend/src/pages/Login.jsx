@@ -1,23 +1,16 @@
-import { useState, useContext } from "react";
+import { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/Auth";
-import { request } from "../utils/api";
+import Form from "../components/Form";
 
 export default function Login() {
-  const navigate = useNavigate();
   const { login } = useContext(AuthContext);
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const navigate = useNavigate();
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-
+  const handleLogin = async (formData) => {
     try {
-      const data = await request("/users/login", "POST", { email, password });
-      login(data); // data should include { token, username, email, ... }
+      await login(formData);
       navigate("/dashboard");
     } catch (err) {
       setError(err.message);
@@ -28,23 +21,15 @@ export default function Login() {
     <div>
       <h2>Login</h2>
       {error && <p style={{ color: "red" }}>{error}</p>}
-      <form onSubmit={handleSubmit}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <button type="submit">Login</button>
-      </form>
+
+      <Form
+        fields={[
+          { name: "email", type: "email", required: true },
+          { name: "password", type: "password", required: true },
+        ]}
+        onSubmit={handleLogin}
+        buttonText="Login"
+      />
     </div>
   );
 }

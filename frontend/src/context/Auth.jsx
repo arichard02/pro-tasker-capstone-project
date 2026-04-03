@@ -1,30 +1,38 @@
 import { createContext, useState, useEffect } from "react";
+import { request } from "../utils/api";
 
 export const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
+export default function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    // Load user from localStorage if available
     const saved = localStorage.getItem("user");
     return saved ? JSON.parse(saved) : null;
   });
 
-  // Save user to localStorage whenever it changes
   useEffect(() => {
-    if (user) {
-      localStorage.setItem("user", JSON.stringify(user));
-    } else {
-      localStorage.removeItem("user");
-    }
+    if (user) localStorage.setItem("user", JSON.stringify(user));
+    else localStorage.removeItem("user");
   }, [user]);
 
-  const login = (userData) => setUser(userData);
+  const register = async (formData) => {
+    const data = await request("/auth/register", "POST", formData);
+    setUser(data);
+    return data;
+  };
 
-  const logout = () => setUser(null);
+  const login = async (formData) => {
+    const data = await request("/auth/login", "POST", formData);
+    setUser(data);
+    return data;
+  };
+
+  const logout = () => {
+    setUser(null);
+  };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, register, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
-};
+}

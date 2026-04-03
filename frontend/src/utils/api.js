@@ -1,31 +1,31 @@
-const API_URL = "http://localhost:3000/api";
+export const API_BASE = "http://localhost:3000/api";
 
-// reusable request function
-export const request = async (
-  endpoint,
-  method = "GET",
-  body = null,
-  token = null,
-) => {
-  try {
-    const res = await fetch(`${API_URL}${endpoint}`, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
-      body: body ? JSON.stringify(body) : null,
-    });
+export async function request(endpoint, method = "GET", body = null, token = null) {
+  const headers = {
+    "Content-Type": "application/json",
+  };
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data.message || "Request failed");
-    }
-
-    return data;
-  } catch (error) {
-    console.error("API Error:", error.message);
-    throw error;
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
   }
-};
+
+  const res = await fetch(`${API_BASE}${endpoint}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : null,
+  });
+
+  let data;
+
+  try {
+    data = await res.json();
+  } catch (err) {
+    throw new Error("Server did not return JSON");
+  }
+
+  if (!res.ok) {
+    throw new Error(data.message || "Server error");
+  }
+
+  return data;
+}

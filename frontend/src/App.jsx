@@ -1,5 +1,11 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { useContext } from "react";
+import React, { useContext } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import Navbar from "./components/Navbar";
 import { AuthContext } from "./context/Auth";
 
 import Dashboard from "./pages/Dashboard";
@@ -10,7 +16,7 @@ import Register from "./pages/Register";
 function App() {
   const { user } = useContext(AuthContext);
 
-  // Protect routes: if not logged in, redirect to login
+  // Wrapper to protect routes
   const ProtectedRoute = ({ children }) => {
     if (!user) return <Navigate to="/login" replace />;
     return children;
@@ -18,12 +24,21 @@ function App() {
 
   return (
     <Router>
+      <Navbar />
       <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        {/* Login page */}
+        <Route
+          path="/login"
+          element={user ? <Navigate to="/dashboard" replace /> : <Login />}
+        />
 
-        {/* Protected routes */}
+        {/* Register page */}
+        <Route
+          path="/register"
+          element={user ? <Navigate to="/dashboard" replace /> : <Register />}
+        />
+
+        {/* Dashboard - protected */}
         <Route
           path="/dashboard"
           element={
@@ -32,6 +47,8 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* Project detail - protected */}
         <Route
           path="/projects/:projectId"
           element={
@@ -41,8 +58,11 @@ function App() {
           }
         />
 
-        {/* Default route */}
-        <Route path="*" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
+        {/* Fallback: redirect based on login state */}
+        <Route
+          path="*"
+          element={<Navigate to={user ? "/dashboard" : "/login"} replace />}
+        />
       </Routes>
     </Router>
   );

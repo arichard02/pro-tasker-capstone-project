@@ -3,20 +3,35 @@ import { request } from "../utils/api";
 
 export default function TaskCard({
   task,
-  projectId,
   token,
+  projectId,
   onDelete,
   onUpdate,
 }) {
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(task.name);
+  const [status, setStatus] = useState(task.status);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
-  // DELETE Task
+  const handleStatusChange = async (e) => {
+    const newStatus = e.target.value;
+    setStatus(newStatus);
+    setLoading(true);
+    try {
+      const updatedTask = await request(
+        `/projects/${projectId}/tasks/${task._id}`,
+        "PUT",
+        { ...task, status: newStatus },
+        token,
+      );
+      onUpdate(updatedTask);
+    } catch (err) {
+      console.error(err);
+      setStatus(task.status); // rollback if error
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDelete = async () => {
-    if (!window.confirm("Are you sure you want to delete this task?")) return;
-
     try {
       await request(
         `/projects/${projectId}/tasks/${task._id}`,
@@ -26,48 +41,21 @@ export default function TaskCard({
       );
       onDelete(task._id);
     } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  // UPDATE Task
-  const handleUpdate = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const updatedTask = await request(
-        `/projects/${projectId}/tasks/${task._id}`,
-        "PUT",
-        { name },
-        token,
-      );
-      onUpdate(updatedTask);
-      setEditing(false);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      console.error(err);
     }
   };
 
   return (
     <div className="task-card">
-      {editing ? (
-        <>
-          <input value={name} onChange={(e) => setName(e.target.value)} />
-          <button onClick={handleUpdate} disabled={loading}>
-            {loading ? "Saving..." : "Save"}
-          </button>
-          <button onClick={() => setEditing(false)}>Cancel</button>
-        </>
-      ) : (
-        <>
-          <p>{task.name}</p>
-          <button onClick={() => setEditing(true)}>Edit</button>
-          <button onClick={handleDelete}>Delete</button>
-        </>
-      )}
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      <p>{task.title}</p>
+      <select value={status} onChange={handleStatusChange} disabled={loading}>
+        <option>To Do</option>
+        <option>In Progress</option>
+        <option>Done</option>
+      </select>
+      <button onClick={handleDelete} disabled={loading}>
+        Delete
+      </button>
     </div>
   );
 }

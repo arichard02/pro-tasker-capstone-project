@@ -1,127 +1,130 @@
-import { useEffect, useState, useContext } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useParams } from "react-router-dom";
 import { AuthContext } from "../context/Auth";
 import { request } from "../utils/api";
-import TaskCard from "../components/TaskCard";
 
 export default function ProjectDetail() {
-  const { user } = useContext(AuthContext);
   const { projectId } = useParams();
+  const { user } = useContext(AuthContext);
 
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  // New Task Form
-  const [taskName, setTaskName] = useState("");
-  const [taskError, setTaskError] = useState("");
-  const [taskLoading, setTaskLoading] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
 
   // Fetch project + tasks
+  const fetchData = async () => {
+    try {
+      const project = await request(
+        `/projects/${projectId}`,
+        "GET",
+        null,
+        user.token,
+      );
+      setProject(project);
+
+      const taskData = await request(
+        `/projects/${projectId}/tasks`,
+        "GET",
+        null,
+        user.token,
+      );
+      setTasks(taskData);
+    } catch (err) {
+      console.error("Fetch error:", err);
+    }
+  };
+
   useEffect(() => {
-    if (!user) return;
+    if (user) fetchData();
+  }, [user]);
 
-    const fetchProjectAndTasks = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const projectData = await request(
-          `/projects/${projectId}`,
-          "GET",
-          null,
-          user.token,
-        );
-        setProject(projectData);
-
-        const tasksData = await request(
-          `/projects/${projectId}/tasks`,
-          "GET",
-          null,
-          user.token,
-        );
-        setTasks(tasksData);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProjectAndTasks();
-  }, [user, projectId]);
-
-  // CREATE Task
-  const handleCreateTask = async (e) => {
-    e.preventDefault();
-    setTaskError("");
-    setTaskLoading(true);
+  // CREATE TASK
+  const handleCreateTask = async () => {
+    if (!newTaskTitle.trim()) return;
 
     try {
       const newTask = await request(
         `/projects/${projectId}/tasks`,
         "POST",
-        { name: taskName },
+        { title: newTaskTitle },
         user.token,
       );
+
       setTasks([newTask, ...tasks]);
-      setTaskName("");
+      setNewTaskTitle("");
     } catch (err) {
-      setTaskError(err.message);
-    } finally {
-      setTaskLoading(false);
+      console.error("Error creating task:", err);
     }
   };
 
-  // Delete Task (update UI)
-  const handleDeleteTask = (taskId) => {
-    setTasks(tasks.filter((t) => t._id !== taskId));
+  // UPDATE TASK
+  const handleUpdateTask = async (taskId, status) => {
+    try {
+      const updated = await request(
+        `/projects/${projectId}/tasks/${taskId}`,
+        "PUT",
+        { status },
+        user.token,
+      );
+
+      setTasks(tasks.map((task) => (task._id === taskId ? updated : task)));
+    } catch (err) {
+      console.error("Error updating task:", err);
+    }
   };
 
-  // Update Task (update UI)
-  const handleUpdateTask = (updatedTask) => {
-    setTasks(tasks.map((t) => (t._id === updatedTask._id ? updatedTask : t)));
+  // DELETE TASK
+  const handleDeleteTask = async (taskId) => {
+    try {
+      await request(
+        `/projects/${projectId}/tasks/${taskId}`,
+        "DELETE",
+        null,
+        user.token,
+      );
+
+      setTasks(tasks.filter((task) => task._id !== taskId));
+    } catch (err) {
+      console.error("Error deleting task:", err);
+    }
   };
 
-  if (!user) return <p>Please login to view this project.</p>;
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p style={{ color: "red" }}>{error}</p>;
-  if (!project) return <p>Project not found.</p>;
+  if (!project) return <p>Loading...</p>;
 
   return (
-    <div className="project-detail">
+    <div>
       <h2>{project.name}</h2>
-      <p>{project.description}</p>
 
-      {/* CREATE TASK FORM */}
-      <form onSubmit={handleCreateTask} style={{ marginBottom: "1rem" }}>
-        {taskError && <p style={{ color: "red" }}>{taskError}</p>}
+      <div>
         <input
           type="text"
           placeholder="New Task"
-          value={taskName}
-          onChange={(e) => setTaskName(e.target.value)}
-          required
+          value={newTaskTitle}
+          onChange={(e) => setNewTaskTitle(e.target.value)}
         />
-        <button type="submit" disabled={taskLoading}>
-          {taskLoading ? "Creating..." : "Add Task"}
-        </button>
-      </form>
+        <button onClick={handleCreateTask}>Add Task</button>
+      </div>
 
       <h3>Tasks</h3>
-      {tasks.length === 0 && <p>No tasks yet!</p>}
-      <div className="tasks-grid">
+
+      {tasks.length === 0 && <p>No tasks yet</p>}
+
+      <ul>
         {tasks.map((task) => (
-          <TaskCard
-            key={task._id}
-            task={task}
-            projectId={project._id}
-            token={user.token}
-            onDelete={handleDeleteTask}
-            onUpdate={handleUpdateTask}
-          />
+          <li key={task._id}>
+            {task.title} - {task.status}
+            <select
+              value={task.status}
+              onChange={(e) => handleUpdateTask(task._id, e.target.value)}
+            >
+              <option>To Do</option>
+              <option>In Progress</option>
+              <option>Done</option>
+            </select>
+            <button onClick={() => handleDeleteTask(task._id)}>Delete</button>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }

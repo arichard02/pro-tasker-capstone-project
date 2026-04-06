@@ -1,89 +1,97 @@
 import Project from "../models/Project.js";
-import Task from "../models/Task.js";
 
-export const getProjects = async (req, res) => {
+// Create
+export const createProject = async (req, res) => {
   try {
-    const projects = await Project.find({ owner: req.user._id }).sort({
-      createdAt: -1,
+    if (!req.user) {
+      return res.status(401).json({ error: "Not authorized" });
+    }
+
+    const { name, description } = req.body;
+
+    const project = await Project.create({
+      name,
+      description,
+      owner: req.user._id,
     });
-    const projectsWithTasks = await Promise.all(
-      projects.map(async (proj) => {
-        const taskCount = await Task.countDocuments({ project: proj._id });
-        return { ...proj.toObject(), taskCount };
-      }),
-    );
-    res.json(projectsWithTasks);
+
+    res.status(201).json(project);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
+    console.error(err.message);
+    res.status(400).json({ error: err.message });
   }
 };
 
+// Get all
+export const getProjects = async (req, res) => {
+  try {
+    const projects = await Project.find({
+      owner: req.user._id,
+    }).populate("tasks");
+
+    res.status(200).json(projects);
+  } catch (err) {
+    console.error(err.message);
+    res.status(400).json({ error: err.message });
+  }
+};
+
+// Get one
 export const getProjectById = async (req, res) => {
   try {
     const project = await Project.findOne({
       _id: req.params.projectId,
       owner: req.user._id,
-    });
-    if (!project) return res.status(404).json({ error: "Project not found" });
+    }).populate("tasks");
 
-    const tasks = await Task.find({ project: project._id }).sort({
-      createdAt: 1,
-    });
-    res.json({ ...project.toObject(), tasks });
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    res.status(200).json(project);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
+    console.error(err.message);
+    res.status(400).json({ error: err.message });
   }
 };
 
-export const createProject = async (req, res) => {
-  try {
-    const { name, description } = req.body;
-    if (!name || !description)
-      return res.status(400).json({ error: "Name and description required" });
-
-    const newProject = await Project.create({
-      name,
-      description,
-      owner: req.user._id,
-    });
-    res.status(201).json(newProject);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
-  }
-};
-
+// Update
 export const updateProject = async (req, res) => {
   try {
+    const { owner, ...updateData } = req.body;
+
     const updatedProject = await Project.findOneAndUpdate(
       { _id: req.params.projectId, owner: req.user._id },
-      req.body,
+      updateData,
       { new: true },
     );
-    if (!updatedProject)
-      return res.status(404).json({ error: "Project not found" });
 
-    res.json(updatedProject);
+    if (!updatedProject) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    res.status(200).json(updatedProject);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
+    console.error(err.message);
+    res.status(400).json({ error: err.message });
   }
 };
 
+// Delete
 export const deleteProject = async (req, res) => {
   try {
-    const project = await Project.findOneAndDelete({
+    const deletedProject = await Project.findOneAndDelete({
       _id: req.params.projectId,
       owner: req.user._id,
     });
-    if (!project) return res.status(404).json({ error: "Project not found" });
 
-    await Task.deleteMany({ project: project._id });
-    res.json({ message: "Project deleted", projectId: project._id });
+    if (!deletedProject) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    res.status(200).json({ message: "Project deleted" });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
+    console.error(err.message);
+    res.status(400).json({ error: err.message });
   }
 };

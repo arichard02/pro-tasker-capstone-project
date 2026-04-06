@@ -5,31 +5,39 @@ const { Schema } = mongoose;
 
 const userSchema = new Schema(
   {
-    username: { 
-      type: String, 
-      required: true 
+    username: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 50,
     },
-
-    email: { 
-      type: String, 
-      required: true, 
-      unique: true 
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      validate: {
+        validator: function (v) {
+          return /^\S+@\S+\.\S+$/.test(v);
+        },
+        message: (props) => `${props.value} is not a valid email!`,
+      },
     },
-
-    password: { type: String, 
-      required: true 
+    password: {
+      type: String,
+      required: true,
+      minlength: 8,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Hash password before saving
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
-
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
-
   next();
 });
 

@@ -1,187 +1,155 @@
 import { useState, useEffect, useContext } from "react";
-import { Link } from "react-router-dom";
-import { request } from "../utils/api.js";
+import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/Auth.jsx";
+import { request } from "../utils/api.js";
 
 export default function Dashboard() {
   const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
+
   const [projects, setProjects] = useState([]);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const [editingProjectId, setEditingProjectId] = useState(null);
-  const [editName, setEditName] = useState("");
-  const [editDescription, setEditDescription] = useState("");
+  // Add project form
+  const [newName, setNewName] = useState("");
+  const [newDescription, setNewDescription] = useState("");
 
-  // Fetch all projects for the logged-in user
-  const fetchProjects = async () => {
-    if (!user) return;
-    try {
-      const data = await request("/projects", "GET", null, user.token);
-      setProjects(data);
-    } catch (err) {
-      console.error("Error fetching projects:", err);
-    }
-  };
-
+  // Fetch projects
   useEffect(() => {
+    if (!user?.token) return;
+
+    const fetchProjects = async () => {
+      try {
+        const data = await request("/projects", "GET", null, user.token);
+        setProjects(data);
+      } catch (err) {
+        console.error("Failed to fetch projects", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchProjects();
   }, [user]);
 
-  // Create a new project
-  const handleCreateProject = async () => {
-    if (!name || !description)
-      return alert("Name and description are required");
+  // Add new project
+  const handleAddProject = async () => {
+    if (!newName || !newDescription) return;
     try {
-      const newProject = await request(
+      const project = await request(
         "/projects",
         "POST",
-        { name, description },
+        { name: newName, description: newDescription },
         user.token,
       );
-      setProjects([...projects, newProject]);
-      setName("");
-      setDescription("");
+      setProjects([...projects, project]);
+      setNewName("");
+      setNewDescription("");
     } catch (err) {
-      console.error("Error creating project:", err);
-      alert(err.message || "Failed to create project");
-    }
-  };
-
-  // Update project
-  const handleUpdateProject = async (projectId) => {
-    if (!editName || !editDescription)
-      return alert("Name and description required");
-    try {
-      const updated = await request(
-        `/projects/${projectId}`,
-        "PUT",
-        { name: editName, description: editDescription },
-        user.token,
-      );
-      setProjects(projects.map((p) => (p._id === projectId ? updated : p)));
-      setEditingProjectId(null);
-    } catch (err) {
-      console.error("Error updating project:", err);
+      console.error("Failed to add project", err);
     }
   };
 
   // Delete project
-  const handleDeleteProject = async (projectId) => {
-    if (!window.confirm("Are you sure you want to delete this project?"))
-      return;
+  const handleDeleteProject = async (id) => {
+    if (!window.confirm("Delete this project?")) return;
     try {
-      await request(`/projects/${projectId}`, "DELETE", null, user.token);
-      setProjects(projects.filter((p) => p._id !== projectId));
+      await request(`/projects/${id}`, "DELETE", null, user.token);
+      setProjects(projects.filter((p) => p._id !== id));
     } catch (err) {
-      console.error("Error deleting project:", err);
+      console.error("Failed to delete project", err);
     }
   };
 
+  // Inline edit project
+  const handleUpdateProject = async (id, updates) => {
+    try {
+      const updated = await request(
+        `/projects/${id}`,
+        "PUT",
+        updates,
+        user.token,
+      );
+      setProjects(projects.map((p) => (p._id === id ? updated : p)));
+    } catch (err) {
+      console.error("Failed to update project", err);
+    }
+  };
+
+  if (loading) return <p>Loading projects...</p>;
+  if (!user?.token) return <p>Please log in to view your projects.</p>;
+
   return (
-    <div style={{ padding: "1rem" }}>
-      <h2>My Projects</h2>
+    <div>
+      <h2>Your Projects</h2>
 
-      {/* Create Project */}
-      <div style={{ marginBottom: "2rem" }}>
+      {/* Add project form */}
+      <div style={{ marginBottom: "20px" }}>
         <input
-          type="text"
-          placeholder="Project Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          style={{ padding: "8px", marginRight: "8px" }}
+          placeholder="Project name"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
         />
         <input
-          type="text"
-          placeholder="Project Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          style={{ padding: "8px", marginRight: "8px" }}
+          placeholder="Project description"
+          value={newDescription}
+          onChange={(e) => setNewDescription(e.target.value)}
         />
-        <button onClick={handleCreateProject} style={{ padding: "8px 16px" }}>
-          Add Project
-        </button>
+        <button onClick={handleAddProject}>Add Project</button>
       </div>
 
-      {/* Projects List */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
-        {projects.length === 0 && <p>No projects yet. Create one above!</p>}
-
-        {projects.map((project) => (
-          <div
+      {/* List of projects */}
+      {projects.length === 0 ? (
+        <p>No projects yet.</p>
+      ) : (
+        projects.map((project) => (
+          <ProjectItem
             key={project._id}
-            style={{
-              display: "block",
-              padding: "1rem",
-              background: "#3b82f6",
-              color: "#fff",
-              borderRadius: "8px",
-              minWidth: "220px",
-              position: "relative",
-            }}
-          >
-            {editingProjectId === project._id ? (
-              <>
-                <input
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  style={{ width: "100%", marginBottom: "0.5rem" }}
-                />
-                <input
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  style={{ width: "100%", marginBottom: "0.5rem" }}
-                />
-                <button
-                  onClick={() => handleUpdateProject(project._id)}
-                  style={{ marginRight: "5px" }}
-                >
-                  Save
-                </button>
-                <button onClick={() => setEditingProjectId(null)}>
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  to={`/projects/${project._id}`}
-                  style={{ color: "#fff", textDecoration: "none" }}
-                >
-                  <h3>{project.name}</h3>
-                  <p>{project.description}</p>
-                  <p style={{ fontSize: "12px", marginTop: "4px" }}>
-                    Tasks: {project.tasks ? project.tasks.length : 0}
-                  </p>
-                </Link>
+            project={project}
+            onDelete={handleDeleteProject}
+            onUpdate={handleUpdateProject}
+            onView={() => navigate(`/projects/${project._id}`)}
+          />
+        ))
+      )}
+    </div>
+  );
+}
 
-                {/* Edit / Delete */}
-                <div
-                  style={{
-                    marginTop: "5px",
-                    display: "flex",
-                    gap: "5px",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <button
-                    onClick={() => {
-                      setEditingProjectId(project._id);
-                      setEditName(project.name);
-                      setEditDescription(project.description);
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button onClick={() => handleDeleteProject(project._id)}>
-                    Delete
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        ))}
-      </div>
+// ----- ProjectItem Component -----
+function ProjectItem({ project, onDelete, onUpdate, onView }) {
+  const [editMode, setEditMode] = useState(false);
+  const [name, setName] = useState(project.name);
+  const [description, setDescription] = useState(project.description);
+
+  const handleSave = () => {
+    onUpdate(project._id, { name, description });
+    setEditMode(false);
+  };
+
+  return (
+    <div
+      style={{ border: "1px solid #ccc", padding: "10px", margin: "10px 0" }}
+    >
+      {editMode ? (
+        <div>
+          <input value={name} onChange={(e) => setName(e.target.value)} />
+          <input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+          <button onClick={handleSave}>Save</button>
+          <button onClick={() => setEditMode(false)}>Cancel</button>
+        </div>
+      ) : (
+        <div>
+          <h3>{project.name}</h3>
+          <p>{project.description}</p>
+          <button onClick={onView}>View</button>
+          <button onClick={() => setEditMode(true)}>Edit</button>
+          <button onClick={() => onDelete(project._id)}>Delete</button>
+        </div>
+      )}
     </div>
   );
 }

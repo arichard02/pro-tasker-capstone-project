@@ -1,71 +1,20 @@
-import React, { useContext } from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
-import Navbar from "./components/Navbar";
-import { AuthContext } from "./context/Auth";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Navbar from "./components/Navbar.jsx";
+import Dashboard from "./pages/Dashboard.jsx";
+import Login from "./pages/Login.jsx";
+import Register from "./pages/Register.jsx";
+import ProjectDetail from "./pages/ProjectDetail.jsx";
 
-import Dashboard from "./pages/Dashboard";
-import ProjectDetail from "./pages/ProjectDetail";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-
-function App() {
-  const { user } = useContext(AuthContext);
-
-  // Wrapper to protect routes
-  const ProtectedRoute = ({ children }) => {
-    if (!user) return <Navigate to="/login" replace />;
-    return children;
-  };
-
+export default function App() {
   return (
     <Router>
       <Navbar />
       <Routes>
-        {/* Login page */}
-        <Route
-          path="/login"
-          element={user ? <Navigate to="/dashboard" replace /> : <Login />}
-        />
-
-        {/* Register page */}
-        <Route
-          path="/register"
-          element={user ? <Navigate to="/dashboard"  /> : <Register />}
-        />
-
-        {/* Dashboard */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Project detail */}
-        <Route
-          path="/projects/:projectId"
-          element={
-            <ProtectedRoute>
-              <ProjectDetail />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Fallback: redirect based on login state
-        <Route
-          path="*"
-          element={<Navigate to={user ? "/dashboard" : "/login"} replace />}
-        /> */}
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+         <Route path="/projects/:id" element={<ProjectDetail />} /> 
       </Routes>
     </Router>
   );
 }
-
-export default App;

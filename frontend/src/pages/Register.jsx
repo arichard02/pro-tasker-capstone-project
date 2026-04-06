@@ -1,41 +1,65 @@
-import { useContext } from "react";
+import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import { request } from "../utils/api.js";
 import { AuthContext } from "../context/Auth.jsx";
-import Form from "../components/Form.jsx";
 
 export default function Register() {
-  const { register } = useContext(AuthContext);
+  const { setUser } = useContext(AuthContext);
   const navigate = useNavigate();
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
-  const handleRegister = async (formData) => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     try {
-      await register(formData);
-      navigate("/dashboard");
+      const data = await request("/auth/register", "POST", {
+        username,
+        email,
+        password,
+      });
+      setUser(data);
+      navigate("/");
     } catch (err) {
-      alert(err.message);
+      setError(err.message || "Registration failed");
     }
   };
 
   return (
-    <Form
-      fields={[
-        { name: "username", label: "Username", required: true },
-        { name: "email", type: "email", label: "Email", required: true },
-        {
-          name: "password",
-          type: "password",
-          label: "Password",
-          required: true,
-        },
-        {
-          name: "confirmPassword",
-          type: "password",
-          label: "Confirm Password",
-          required: true,
-        }, // ✅ new
-      ]}
-      onSubmit={handleRegister}
-      buttonText="Create Account"
-    />
+    <div style={{ maxWidth: "400px", margin: "auto", padding: "24px" }}>
+      <h2>Register</h2>
+      {error && <p style={{ color: "red" }}>{error}</p>}
+      <form onSubmit={handleSubmit}>
+        <div>
+          <label>Username</label>
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <label>Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <label>Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
+        <button type="submit">Register</button>
+      </form>
+    </div>
   );
 }

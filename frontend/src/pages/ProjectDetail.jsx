@@ -1,224 +1,176 @@
 import { useState, useEffect, useContext } from "react";
-import { useParams } from "react-router-dom";
-import { request } from "../utils/api.js";
+import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/Auth.jsx";
+import { request } from "../utils/api.js";
+import TaskCard from "../components/TaskCard.jsx";
 
 export default function ProjectDetail() {
+  const { id } = useParams(); // projectId
+  const navigate = useNavigate();
   const { user } = useContext(AuthContext);
-  const { projectId } = useParams();
 
+  const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const [editingTaskId, setEditingTaskId] = useState(null);
-  const [editTitle, setEditTitle] = useState("");
+  // New task inputs
+  const [newTitle, setNewTitle] = useState("");
+  const [newDescription, setNewDescription] = useState("");
+  const [newStatus, setNewStatus] = useState("To Do");
+
+  // Project edit
+  const [editMode, setEditMode] = useState(false);
+  const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
 
-  const STATUSES = ["To Do", "In Progress", "Done"];
-  const STATUS_COLORS = {
-    "To Do": "#f87171", // red
-    "In Progress": "#fbbf24", // yellow
-    Done: "#34d399", // green
-  };
-
-  const formatDate = (date) => new Date(date).toLocaleString();
-
-  // Fetch tasks for this project
-  const fetchTasks = async () => {
-    try {
-      const data = await request(
-        `/projects/${projectId}/tasks`,
-        "GET",
-        null,
-        user.token,
-      );
-      setTasks(data);
-    } catch (err) {
-      console.error("Error fetching tasks:", err);
-    }
-  };
-
+  // Fetch project
   useEffect(() => {
-    if (user) fetchTasks();
-  }, [user]);
+    if (!user?.token) return;
 
-  // Create new task
-  const handleCreateTask = async () => {
-    if (!title || !description)
-      return alert("Title and Description are required");
+    const fetchProject = async () => {
+      try {
+        const data = await request(`/projects/${id}`, "GET", null, user.token);
+        setProject(data);
+        setEditName(data.name);
+        setEditDescription(data.description);
+      } catch (err) {
+        console.error("Failed to fetch project", err);
+      }
+    };
+
+    fetchProject();
+  }, [id, user]);
+
+  // Fetch tasks
+  useEffect(() => {
+    if (!user?.token) return;
+
+    const fetchTasks = async () => {
+      try {
+        const data = await request(`/projects/${id}/tasks/`, "GET", null, user.token);
+        setTasks(data);
+      } catch (err) {
+        console.error("Failed to fetch tasks", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTasks();
+  }, [id, user]);
+
+  if (loading) return <p>Loading project and tasks...</p>;
+  if (!project) return <p>Project not found.</p>;
+
+  // ----- Project CRUD -----
+  const handleProjectUpdate = async () => {
     try {
-      const data = await request(
-        `/projects/${projectId}/tasks`,
+      const updated = await request(
+        `/projects/${id}`,
+        "PUT",
+        { name: editName, description: editDescription },
+        user.token,
+      );
+      setProject(updated);
+      setEditMode(false);
+    } catch (err) {
+      console.error("Failed to update project", err);
+    }
+  };
+
+  const handleProjectDelete = async () => {
+    if (!window.confirm("Delete this project?")) return;
+    try {
+      await request(`/projects/${id}`, "DELETE", null, user.token);
+      navigate("/"); // back to dashboard
+    } catch (err) {
+      console.error("Failed to delete project", err);
+    }
+  };
+
+  // ----- Task CRUD -----
+  // /api/projects/:projectId/tasks (POST)
+  const handleAddTask = async () => {
+    if (!newTitle) return;
+    try {
+      const task = await request(
+        `/projects/${id}/tasks`,
         "POST",
-        { title, description },
+        { title: newTitle, description: newDescription, status: newStatus },
         user.token,
       );
-      setTasks([...tasks, data]);
-      setTitle("");
-      setDescription("");
+      setTasks((prev) => [...prev, task]);
+      setNewTitle("");
+      setNewDescription("");
+      setNewStatus("To Do");
     } catch (err) {
-      console.error("Error creating task:", err);
+      console.error("Failed to add task", err);
     }
   };
 
-  // Update task
-  const handleUpdateTask = async (taskId) => {
-    if (!editTitle || !editDescription)
-      return alert("Title and Description required");
-    try {
-      const updated = await request(
-        `/projects/${projectId}/tasks/${taskId}`,
-        "PUT",
-        { title: editTitle, description: editDescription },
-        user.token,
-      );
-      setTasks(tasks.map((t) => (t._id === taskId ? updated : t)));
-      setEditingTaskId(null);
-    } catch (err) {
-      console.error("Error updating task:", err);
-    }
-  };
-
-  // Delete task
-  const handleDeleteTask = async (taskId) => {
-    if (!window.confirm("Are you sure you want to delete this task?")) return;
-    try {
-      await request(
-        `/projects/${projectId}/tasks/${taskId}`,
-        "DELETE",
-        null,
-        user.token,
-      );
-      setTasks(tasks.filter((t) => t._id !== taskId));
-    } catch (err) {
-      console.error("Error deleting task:", err);
-    }
-  };
-
-  // Change task status
-  const handleChangeStatus = async (taskId, newStatus) => {
-    try {
-      const updated = await request(
-        `/projects/${projectId}/tasks/${taskId}`,
-        "PUT",
-        { status: newStatus },
-        user.token,
-      );
-      setTasks(tasks.map((t) => (t._id === taskId ? updated : t)));
-    } catch (err) {
-      console.error("Error updating status:", err);
-    }
+  const handleTaskDeleted = (taskId) => {
+    setTasks((prev) => prev.filter((t) => t._id !== taskId));
   };
 
   return (
-    <div style={{ padding: "1rem" }}>
-      <h2>Project Tasks</h2>
+    <div>
+      {/* Project info */}
+      {editMode ? (
+        <div>
+          <input
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+          />
+          <textarea
+            value={editDescription}
+            onChange={(e) => setEditDescription(e.target.value)}
+          />
+          <button onClick={handleProjectUpdate}>Save</button>
+          <button onClick={() => setEditMode(false)}>Cancel</button>
+        </div>
+      ) : (
+        <div>
+          <h2>{project.name}</h2>
+          <p>{project.description}</p>
+          <button onClick={() => setEditMode(true)}>Edit Project</button>
+          <button onClick={handleProjectDelete}>Delete Project</button>
+        </div>
+      )}
 
-      {/* Create Task */}
-      <div style={{ marginBottom: "1rem" }}>
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Task Title"
-          style={{ marginRight: "0.5rem" }}
-        />
-        <input
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Task Description"
-          style={{ marginRight: "0.5rem" }}
-        />
-        <button onClick={handleCreateTask}>Add Task</button>
-      </div>
+      {/* Add new task */}
+      <h3>Add Task</h3>
+      <input
+        placeholder="Title"
+        value={newTitle}
+        onChange={(e) => setNewTitle(e.target.value)}
+      />
+      <textarea
+        placeholder="Description"
+        value={newDescription}
+        onChange={(e) => setNewDescription(e.target.value)}
+      />
+      <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
+        <option value="To Do">To Do</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Done">Done</option>
+      </select>
+      <button onClick={handleAddTask}>Add Task</button>
 
-      {/* Tasks List */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-        {tasks.map((task) => (
-          <div
+      {/* Task list */}
+      <h3>Tasks</h3>
+      {tasks.length > 0 ? (
+        tasks.map((task) => (
+          <TaskCard
             key={task._id}
-            style={{
-              background: STATUS_COLORS[task.status] || "#e5e7eb",
-              padding: "1rem",
-              borderRadius: "8px",
-              boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-            }}
-          >
-            {editingTaskId === task._id ? (
-              <>
-                <input
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  style={{ width: "100%", marginBottom: "0.5rem" }}
-                />
-                <textarea
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  style={{ width: "100%", marginBottom: "0.5rem" }}
-                />
-                <button
-                  onClick={() => handleUpdateTask(task._id)}
-                  style={{ marginRight: "5px" }}
-                >
-                  Save
-                </button>
-                <button onClick={() => setEditingTaskId(null)}>Cancel</button>
-              </>
-            ) : (
-              <>
-                <h4>{task.title}</h4>
-                <p>{task.description}</p>
-                <p>Status: {task.status}</p>
-                <p style={{ fontSize: "12px", color: "#555" }}>
-                  Created: {formatDate(task.createdAt)}
-                </p>
-                <p style={{ fontSize: "12px", color: "#555" }}>
-                  Updated: {formatDate(task.updatedAt)}
-                </p>
-
-                {/* Actions */}
-                <div
-                  style={{
-                    marginTop: "5px",
-                    display: "flex",
-                    gap: "5px",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  {/* Status Dropdown */}
-                  <select
-                    value={task.status}
-                    onChange={(e) =>
-                      handleChangeStatus(task._id, e.target.value)
-                    }
-                  >
-                    {STATUSES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-
-                  {/* Edit / Delete */}
-                  <button
-                    onClick={() => {
-                      setEditingTaskId(task._id);
-                      setEditTitle(task.title);
-                      setEditDescription(task.description);
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button onClick={() => handleDeleteTask(task._id)}>
-                    Delete
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        ))}
-        {tasks.length === 0 && <p>No tasks yet. Add one above!</p>}
-      </div>
+            task={task}
+            token={user.token}
+            projectId={id}
+            onDeleted={handleTaskDeleted}
+          />
+        ))
+      ) : (
+        <p>No tasks yet.</p>
+      )}
     </div>
   );
 }

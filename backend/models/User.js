@@ -1,15 +1,24 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
-
-
 const { Schema } = mongoose;
 
 const userSchema = new Schema(
   {
-    username: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
+    username: { 
+      type: String, 
+      required: true 
+    },
+
+    email: { 
+      type: String, 
+      required: true, 
+      unique: true 
+    },
+
+    password: { type: String, 
+      required: true 
+    },
   },
   { timestamps: true }
 );
@@ -24,12 +33,11 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-// Compare password method (used in login)
+// Compare password method
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// Prevent OverwriteModelError
 const User = mongoose.models.User || mongoose.model("User", userSchema);
 
 export default User;

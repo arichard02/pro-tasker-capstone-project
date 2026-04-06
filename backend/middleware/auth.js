@@ -23,7 +23,7 @@ export const requireAuth = async (req, res, next) => {
 // Verify ownership of a project
 export const requireProjectOwnership = async (req, res, next) => {
   try {
-    const project = await Project.findById(req.params.projectId); // Use correct param name
+    const project = await Project.findById(req.params.projectId);
     if (!project) return res.status(404).json({ error: "Project not found" });
     if (project.owner.toString() !== req.user._id.toString())
       return res.status(403).json({ error: "Forbidden" });
@@ -40,7 +40,6 @@ export const requireTaskOwnership = async (req, res, next) => {
     const task = await Task.findById(req.params.taskId);
     if (!task) return res.status(404).json({ error: "Task not found" });
 
-    // Check that the task belongs to a project the user owns
     const project = await Project.findById(task.project);
     if (!project || project.owner.toString() !== req.user._id.toString())
       return res.status(403).json({ error: "Forbidden" });

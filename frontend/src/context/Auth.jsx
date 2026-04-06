@@ -9,6 +9,7 @@ export function AuthProvider({ children }) {
     const saved = localStorage.getItem("user");
     return saved ? JSON.parse(saved) : null;
   });
+  
 
   useEffect(() => {
     localStorage.setItem("user", JSON.stringify(user));

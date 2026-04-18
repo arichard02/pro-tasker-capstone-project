@@ -89,7 +89,7 @@ export default function ProjectDetail() {
   };
 
   // ----- Task CRUD -----
-  // /api/projects/:projectId/tasks (POST)
+  // /projects/:projectId/tasks (POST)
   const handleAddTask = async () => {
     if (!newTitle) return;
     try {

@@ -44,7 +44,7 @@ app.use("/api/projects", projectRoutes);
 app.get("/", (req, res) => res.send(`
   API is running
   <ul>
-    <li><a href="/api/auth/server">/api/auth/server</a> (POST)</li>
+    <li><a href="/api/auth/login">/api/auth/login</a> (POST)</li>
     <li><a href="/api/auth/register">/api/auth/register</a> (POST)</li>
     <li><a href="/api/projects">/api/projects</a> (POST)</li>
     <li><a href="/api/projects">/api/projects</a> (GET)</li>
